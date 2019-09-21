@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"> 
   <title></title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="resources/css/bootstrap.min.css">
+  <script src="jquery.min.js"></script>
+  <script src="resources/js/bootstrap.min.js"></script>
   <script type="text/javascript" src="main.js"></script>
   <style type="text/css">
     .resizable_panels {
@@ -19,34 +19,36 @@
     .panel .panel-heading span{
       float: right;
     }
+    /*#controls_panel,#seek_panel{
+      width:100%;
+    }*/
+    #controls_panel span, #seek_panel span{
+      float: left;
+      padding: 0 2px;
+    }
   </style>
 </head>
 <body>
   <nav class="navbar navbar-inverse">
     <div class="container-fluid">
-      <button id="playlist_button" class="btn btn-danger navbar-btn">Playlist</button>
-      <button id="source_button" class="btn btn-danger navbar-btn">Source</button>
-      <button id="library_button" class="btn btn-danger navbar-btn">Library</button>
     </div>
   </nav>
-
   <div class="container">
-    <div id="main_panel" class="resizable_panels">
-      <div id="player_panel"></div>
-      <div id="playlist_panel"></div>
-    </div>
-    <div id="source_panel" class="resizable_panels"></div>
-    <div id="library_panel" class="resizable_panels"></div>
+    <div id="player_panel"></div>
+    <div id="playlist_panel"></div>
+    <div id="equilizer_panel" ></div>
+    <div id="library_panel" ></div>
   </div>
 
+  
   <script type="text/javascript">
     $(document).ready(function() {
 
       init = function(){
-        create_panel('#player_panel','Player',false);
+        create_player_panel('#player_panel','Player',false);
         create_panel('#playlist_panel','Playlist');
         create_panel('#library_panel','Library');
-        create_panel('#source_panel','Source');
+        // create_panel('#source_panel','Source');
         resize_panels();
       }
       init();
@@ -63,12 +65,12 @@
           resize_panels();
         }
       });
-      $('#source_button').click(function() {
-        if ($("#source_panel").children().length <= 0) {
-          create_panel('#source_panel','Source');
-          resize_panels();
-        }
-      });
+      // $('#source_button').click(function() {
+      //   if ($("#source_panel").children().length <= 0) {
+      //     create_panel('#source_panel','Source');
+      //     resize_panels();
+      //   }
+      // });
 
     });
   </script>
