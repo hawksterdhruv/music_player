@@ -61,5 +61,5 @@ function create_player_panel(id,header,del=true) {
 <script>
    $('#play-button').click(function(){ pywebview.api.play(); })
 </script>`));
-  
 };
+

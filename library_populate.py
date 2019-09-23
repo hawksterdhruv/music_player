@@ -11,6 +11,10 @@ from functools import reduce
 class Library:
     def __init__(self):
         self.songs = []
+        self.contents = []
+    
+    def get_list(self):
+        return self.contents
 
     def add_new(self, path):
         # todo : what to do with --> album art
@@ -74,9 +78,10 @@ class Library:
             pprint(audio.tags.getall('TDRC'))
             # pprint()
 
-            # pprint(audio.info.length)
+            op.update(Duration=audio.info.length)
             # pprint(audio.info.bitrate)
             pprint(audio.info.__dict__)
+            self.contents.append(op)
         elif file_extension == '.mp4':
             audio = MP4(filepath)
             k = dict(audio)
