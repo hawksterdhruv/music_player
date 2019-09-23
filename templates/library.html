@@ -1,4 +1,7 @@
 {% extends 'base.html' %}
+{% block header %}
+
+{% endblock %}
 
 {% block main_content %}
 <div id="player_panel">
@@ -10,7 +13,7 @@
         <!--        </div>-->
         <div class="panel-body">
         	<div id="library_song_listing">
-        		
+        		<table class="table"></table>
         	</div>
     	</div>
     	<div class="panel-footer"><button id='library-add-button' class="btn btn-default">Add</button></div>
@@ -22,12 +25,26 @@ $(document).ready(function(){
 	$('#library-add-button').click(function(){
 	    pywebview.api.add_new().then(function(){
 	    	pywebview.api.get_list().then(function(response){
-	    		// $('#library_song_listing').append(JSON.Stringify(response));
-	    		console.log(response);
+	    		jQuery(function($){
+					$('.table').footable({
+						"columns": [
+							{ "name": "Title", "title": "Title" },
+							{ "name": "Artists", "title": "Artists"},
+							{ "name": "Album", "title": "Album" },
+							{ "name": "Duration", "title": "Duration"}
+						],
+						"rows": JSON.parse(response)
+						});
+					});
+	    		// $('#library_song_listing').append(
+	    			// JSON.parse(response)
+	    			// );
+	    		// console.log(response);
 
 	    	})
 	    })
 	});
+	
 });
 </script>
 

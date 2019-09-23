@@ -37,10 +37,6 @@ class LibraryApi:
 
     @classmethod
     def get_list(cls,params):
-        print(json.dumps(cls.contents))
-        # return {"dhruv":["`shah`"]}))
-        # for a in cls.contents:
-        #     pprint(a)
         return json.dumps(cls.contents).replace("'","`")
         # return cls.contents
 
