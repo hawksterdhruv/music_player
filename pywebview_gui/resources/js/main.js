@@ -49,7 +49,7 @@ function create_player_panel(id,header,del=true) {
     <div id="controls_panel">
       <span id="backward-button" class="glyphicon glyphicon-backward"></span>
       <span id="play-button" class="glyphicon glyphicon-play"></span>
-      <span id="pause-button" class="glyphicon glyphicon-pause"></span>
+      <span id="pause-button" class="glyphicon glyphicon-pause" style="display:hidden"></span>
       <span id="stop-button" class="glyphicon glyphicon-stop"></span> 
       <span id="forward-button" class="glyphicon glyphicon-forward"></span>
       <span class="glyphicon glyphicon-volume-up"></span>
@@ -57,6 +57,9 @@ function create_player_panel(id,header,del=true) {
       <span><input type="range" min="1" max="100" value="50" class="slider"/></span>
     </div><div style="clear:both;"></div>
   </div>
-</div>`));
+</div>
+<script>
+   $('#play-button').click(function(){ pywebview.api.play(); })
+</script>`));
   
 };
