@@ -2,7 +2,7 @@ import audiotools.player
 import audiotools
 import os
 import logging
-
+import webview
 from pprint import pprint
 from mutagen import File
 from mutagen.mp3 import MP3
@@ -41,9 +41,18 @@ class LibraryApi:
         # return cls.contents
 
     @classmethod
-    def add_new(cls, params,path='/home/dhruv/Music/Music/Aisha (2010) ~ 320 VBR'):
-        # print(params)
-        # path=''
+    def add_new_button(cls,params):
+        window = webview.create_window('Open file dialog example')
+        path = window.create_file_dialog(webview.FOLDER_DIALOG)
+        window.destroy()
+        if len(path) > 0:
+            cls.add_new(params,path=path[0])
+        else:
+            return
+
+    @classmethod
+    def add_new(cls, params,path=''):
+
         print(f"{path} : add_new() called")
         # todo : what to do with --> album art
         # todo : what to do with --> Thumbs.db

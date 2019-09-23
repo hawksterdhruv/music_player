@@ -23,7 +23,7 @@
 $(document).ready(function(){
     //pywebview.api.get_list().then(function(response){$('#library_song_listing').value = response;});
 	$('#library-add-button').click(function(){
-	    pywebview.api.add_new().then(function(){
+	    pywebview.api.add_new_button().then(function(){
 	    	pywebview.api.get_list().then(function(response){
 	    		jQuery(function($){
 					$('.table').footable({
