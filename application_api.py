@@ -55,8 +55,24 @@ class LibraryApi:
 
     @classmethod
     def get_list(cls, params):
-        session.query(models.Song)
-        return json.dumps(cls.contents).replace("'", "`")
+        # session.flush()
+        songs = session.query(models.Song).all()
+        albums = session.query(models.Album).all()
+        artists = session.query(models.Artist).all()
+        response = {
+            'albums': [{'name': a.name,
+                        'track_count': len(a.songs),
+                        'year': ''} for a in albums],
+            'artists': [{'name': a.name,
+                         'track_count': len(a.songs),
+                         'album_count': len(albums)} for a in artists],
+            'songs': [{'title': a.title,
+                       'album': a.album.name,
+                       'duration': a.duration,
+                       'artists': ','.join([b.name for b in a.artists])} for a in songs]
+        }
+        # pprint(response)
+        return json.dumps(response).replace("'", "`")
         # return cls.contents
 
     @classmethod
@@ -67,9 +83,10 @@ class LibraryApi:
         # window.destroy()
 
         if len(path) > 0:
-            # cls.add_new(params, path=path[0])
-            t = threading.Thread(target=cls.add_new, args=(params,), kwargs={'path': path[0]}, daemon=True)
-            t.start()
+            # todo:  might have reintroduced crashing bug post adding data
+            cls.add_new(params, path=path[0])
+            # t = threading.Thread(target=cls.add_new, args=(params,), kwargs={'path': path[0]}, daemon=True)
+            # t.start()
         else:
             return
 
@@ -94,6 +111,7 @@ class LibraryApi:
                 al = get_or_create(session, models.Album, name=temp['Album'])
                 ar_list = [get_or_create(session, models.Artist, name=artist_name) for artist_name in
                            temp['Artists']]
+
                 gen = get_or_create(session, models.Genre, name=temp['Genre'])
                 song = get_or_create(session, models.Song,
                                      title=temp['Title'],

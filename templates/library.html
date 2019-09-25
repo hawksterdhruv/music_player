@@ -4,47 +4,104 @@
 {% endblock %}
 
 {% block main_content %}
-<div id="player_panel">
-    <div class="panel panel-default">
-        <!--        <div class="panel-heading">-->
-        <!--            `+header+ ((del) ? `<span class="glyphicon glyphicon-remove"-->
-        <!--                                      onclick="$(this).parent().parent().remove(); resize_panels();"></span>` : ``) +-->
-        <!--            `-->
-        <!--        </div>-->
-        <div class="panel-body">
-        	<div id="library_song_listing">
-        		<table class="table"></table>
-        	</div>
-    	</div>
-    	<div class="panel-footer"><button id='library-add-button' class="btn btn-default">Add</button></div>
+<div class="container">
+  <div class="col-sm-2">
+    <div><button id="library-add-button" class="btn btn-default btn-xs">Add</button></div>
+  </div>
+  <div class="col-sm-10">
+    <div class="row">
+
+      <div id="artist_grouping" class="col-sm-6">
+        <table class="table"></table>
+      </div>
+      <div id="album_grouping" class="col-sm-6">
+        <table class="table"></table>
+      </div>
     </div>
+
+    <div class="row">
+      <div id="songs_grouping" class="container-fluid">
+        <table class="table"></table>
+      </div>
+    </div>
+  </div>
+
 </div>
 <script>
 $(document).ready(function(){
-    //pywebview.api.get_list().then(function(response){$('#library_song_listing').value = response;});
-	$('#library-add-button').click(function(){
-	    pywebview.api.add_new_button().then(function(){
-	    	pywebview.api.get_list().then(function(response){
-	    		jQuery(function($){
-					$('.table').footable({
-						"columns": [
-							{ "name": "Title", "title": "Title" },
-							{ "name": "Artists", "title": "Artists"},
-							{ "name": "Album", "title": "Album" },
-							{ "name": "Duration", "title": "Duration"}
-						],
-						"rows": JSON.parse(response)
-						});
-					});
-	    		// $('#library_song_listing').append(
-	    			// JSON.parse(response)
-	    			// );
-	    		// console.log(response);
+  jQuery(function($){
+    pywebview.api.get_list().then(function(response){
+      response = JSON.parse(response);
 
-	    	})
-	    })
-	});
-	
+      jQuery(function($){
+        $('#artist_grouping .table').footable({
+          "columns": [
+            { "name": "name", "title": "Artist" },
+            { "name": "album_count", "title": "Album"},
+            { "name": "track_count", "title": "Tracks" }
+            // { "name": "Duration", "title": "Duration"}
+          ],
+          "rows": response.artists
+        });
+        $('#album_grouping .table').footable({
+          "columns": [
+            { "name": "name", "title": "Artist" },
+            { "name": "album_count", "title": "Album"},
+            { "name": "track_count", "title": "Tracks" }
+          ],
+          "rows": response.albums
+        });
+        $('#songs_grouping .table').footable({
+          "columns": [
+            { "name": "title", "title": "Title" },
+            { "name": "artists", "title": "Artists"},
+            { "name": "album", "title": "Album" },
+            { "name": "duration", "title": "Duration", "formatter": function(value,option,rowData){
+              return Math.floor(value/60)+':'+String(Math.floor(value%60)).padStart(2,'0')}
+            }
+          ],
+          "rows": response.songs
+        });
+      });
+    });
+  });
+  $('#library-add-button').click(function(){
+    pywebview.api.add_new_button().then(function(){
+      pywebview.api.get_list().then(function(response){
+        response = JSON.parse(response);
+        console.log(response);
+        jQuery(function($){
+          $('#artist_grouping .table').footable({
+            "columns": [
+              { "name": "Artist", "title": "name" },
+              { "name": "Album", "title": "album_count"},
+              { "name": "Tracks", "title": "track_count" }
+              // { "name": "Duration", "title": "Duration"}
+            ],
+            "rows": response.artists
+          });
+          $('#album_grouping .table').footable({
+            "columns": [
+              { "name": "Album", "title": "name" },
+              { "name": "Year", "title": "year"},
+              { "name": "Tracks", "title": "track_count" }
+            ],
+            "rows": response.albums
+          });
+          $('#songs_grouping .table').footable({
+            "columns": [
+              { "name": "Title", "title": "title" },
+              { "name": "Artists", "title": "artists"},
+              { "name": "Album", "title": "album" },
+              { "name": "Duration", "title": "duration"}
+            ],
+            "rows": response.songs
+          });
+        });
+      })
+    })
+  });
+
 });
 </script>
 

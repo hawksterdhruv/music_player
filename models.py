@@ -34,12 +34,18 @@ class Artist(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)
     songs = relationship('Song', secondary='songArtist')
+    albums = relationship('Album', secondary='albumArtist')
 
 
 class SongArtist(Base):
     __tablename__ = 'songArtist'
     artist_id = Column(Integer, ForeignKey('artists.id'), primary_key=True)
     song_id = Column(Integer, ForeignKey('songs.id'), primary_key=True)
+
+class AlbumArtist(Base):
+    __tablename__ = 'albumArtist'
+    artist_id = Column(Integer, ForeignKey('artists.id'), primary_key=True)
+    album_id = Column(Integer, ForeignKey('albums.id'), primary_key=True)
 
 
 class Genre(Base):
