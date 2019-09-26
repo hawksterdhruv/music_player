@@ -16,7 +16,8 @@ if __name__ == '__main__':
     t.daemon = True
     t.start()
 
-    webview.create_window('Load CSS Example', "http://localhost:5000/", js_api=PlayerApi)
-    webview.create_window('Library', 'http://localhost:5000/library', js_api=LibraryApi)
+    playerapi = PlayerApi()
+    player_window = webview.create_window('Player', "http://localhost:5000/", js_api=playerapi)
+    # library_window = webview.create_window('Library', 'http://localhost:5000/library', js_api=LibraryApi)
     webview.start(debug=True)
     # sys.exit()
