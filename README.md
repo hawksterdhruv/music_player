@@ -8,3 +8,4 @@ PyQt based music player
 )
 
 ## known bugs
+1) panels not resizing
