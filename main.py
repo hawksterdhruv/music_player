@@ -1,15 +1,15 @@
 import sys
 
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QFileDialog
+# from PyQt5.QtWidgets import QFileDialog
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from application_api import PlayerApi, LibraryApi
 import models
 from application_api import LibraryApi
-from library_ui import Ui_Dialog
-
+from library_ui import Ui_Dialog as Library_ui_dialog
+from player_ui import Ui_MainWindow as Player_ui_mainwindow
 from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt
 
 
@@ -38,10 +38,27 @@ class SongsAbstractModel(QAbstractTableModel):
             return list(self.songdata[0].keys())[p_int]
 
 
-class Main(QtWidgets.QDialog):
+class PlayerMainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        QtWidgets.QMainWindow.__init__(self)
+        self.ui = Player_ui_mainwindow()
+        self.ui.setupUi(self)
+        self.library_dialog = LibraryDialog()
+        self.ui.medialibrary_button.clicked.connect(self.toggle_library)
+
+    def toggle_library(self):
+        # my_dialog = LibraryDialog()
+        # my_dialog.show()
+        if self.library_dialog.isHidden():
+            self.library_dialog.show()
+        else:
+            self.library_dialog.hide()
+
+
+class LibraryDialog(QtWidgets.QDialog):
     def __init__(self):
         QtWidgets.QDialog.__init__(self)
-        self.ui = Ui_Dialog()
+        self.ui = Library_ui_dialog()
         self.ui.setupUi(self)
 
         self.ui.songs.verticalHeader().hide()
@@ -49,6 +66,7 @@ class Main(QtWidgets.QDialog):
         self.ui.albums.verticalHeader().hide()
 
         self.ui.library_button.clicked.connect(self.add_new)
+        # self.ui.widget.isWindowModified(self.alert)
 
         self.engine = create_engine('sqlite:///music.db')
         models.Base.metadata.create_all(self.engine)
@@ -56,8 +74,11 @@ class Main(QtWidgets.QDialog):
         self.session = self.Session()
         self.populate_songs()
 
+    # def alert(self):
+    #     print('oye,oye')
+
     def add_new(self):
-        folder = QFileDialog.getExistingDirectory()
+        folder = QtWidgets.QFileDialog.getExistingDirectory()
         LibraryApi.add_new(path=folder)
 
     def populate_songs(self):
@@ -84,13 +105,15 @@ class Main(QtWidgets.QDialog):
         self.ui.albums.setModel(albums)
 
 
-
 if __name__ == '__main__':
     # Base = declarative_base()
 
     app = QtWidgets.QApplication(sys.argv)
     # Dialog = QtWidgets.QDialog()
-    my_dialog = Main()
+    # my_dialog = LibraryDialog()
 
-    my_dialog.show()
+    # my_dialog.show()
+    my_mainwindow = PlayerMainWindow()
+    my_mainwindow.show()
+
     sys.exit(app.exec_())
