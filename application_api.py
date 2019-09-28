@@ -23,7 +23,7 @@ engine = create_engine('sqlite:///music.db', connect_args={'check_same_thread': 
                        poolclass=SingletonThreadPool)
 # session_factory = sessionmaker(bind=engine, expire_on_commit=False)
 # Session = scoped_session(session_factory)
-Session = sessionmaker(bind=engine, expire_on_commit=False )
+Session = sessionmaker(bind=engine, expire_on_commit=False)
 session = Session()
 
 
@@ -45,7 +45,7 @@ class PlayerApi:
         self.library_window = None
         self.lib = LibraryApi()
 
-    def play(self,param):
+    def play(self):
         # audiotools.player.available_outputs()
         audio_file = audiotools.open('/home/dhruv/Music/Music/Aisha (2010) ~ 320 VBR/04 - Behke Behke [DoReGaMa].mp3')
 
@@ -57,25 +57,26 @@ class PlayerApi:
         player.open(audio_file)
         player.play()
 
-    def toggle_lib(self,param):
-        print('clicked')
-        t = threading.Thread(target=webview.create_window, args=('Library', 'http://localhost:5000/library',), kwargs={'js_api':self.lib}, daemon=True)
-        t.start()
-        # self.library_window = webview.create_window('Library', 'http://localhost:5000/library', js_api=self.lib)
-        return
-        # if self.lib_state:
-        #     self.library_window.destroy()
-        #     self.lib_state = False
-        # else:
-        #
-        #     self.library_window = webview.create_window('Library', 'http://localhost:5000/library', js_api=self.lib)
-        #     self.lib_state = True
+    # def toggle_lib(self):
+    #     print('clicked')
+    #     t = threading.Thread(target=webview.create_window, args=('Library', 'http://localhost:5000/library',),
+    #     kwargs={'js_api':self.lib}, daemon=True)
+    #     t.start()
+    #     # self.library_window = webview.create_window('Library', 'http://localhost:5000/library', js_api=self.lib)
+    #     return
+    # if self.lib_state:
+    #     self.library_window.destroy()
+    #     self.lib_state = False
+    # else:
+    #
+    #     self.library_window = webview.create_window('Library', 'http://localhost:5000/library', js_api=self.lib)
+    #     self.lib_state = True
 
 
 class LibraryApi:
 
     @classmethod
-    def get_list(cls, params):
+    def get_list(cls):
 
         songs = session.query(models.Song).all()
         albums = session.query(models.Album).all()
@@ -96,24 +97,24 @@ class LibraryApi:
         return json.dumps(response).replace("'", "`")
         # return cls.contents
 
-    @classmethod
-    def add_new_button(cls, params):
-        window = webview.create_window('Open file dialog example')
-        uid = window.uid
-        path = window.create_file_dialog(webview.FOLDER_DIALOG)
-        # window.destroy()
-        # window.gui.close_window(uid)
+    # @classmethod
+    # def add_new_button(cls):
+    #     window = webview.create_window('Open file dialog example')
+    #     uid = window.uid
+    #     path = window.create_file_dialog(webview.FOLDER_DIALOG)
+    #     # window.destroy()
+    #     # window.gui.close_window(uid)
+    #
+    #     if path and len(path) > 0:
+    #         # todo:  might have reintroduced crashing bug post adding data
+    #         cls.add_new(path=path[0])
+    #         # t = threading.Thread(target=cls.add_new, args=(params,), kwargs={'path': path[0]}, daemon=True)
+    #         # t.start()
+    #     else:
+    #         return
 
-        if path and len(path) > 0:
-            # todo:  might have reintroduced crashing bug post adding data
-            cls.add_new(params, path=path[0])
-            # t = threading.Thread(target=cls.add_new, args=(params,), kwargs={'path': path[0]}, daemon=True)
-            # t.start()
-        else:
-            return
-
     @classmethod
-    def add_new(cls, params, path=''):
+    def add_new(cls, path=''):
 
         print(f"{path} : add_new() called")
         # todo : what to do with --> album art
@@ -182,7 +183,7 @@ class LibraryApi:
                             # session.add(song)
                             session.commit()
                 elif os.path.isdir(filepath):
-                    cls.add_new(params, path=filepath)
+                    cls.add_new(path=filepath)
         return
 
     @classmethod

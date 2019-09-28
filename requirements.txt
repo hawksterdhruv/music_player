@@ -2,3 +2,4 @@ flask
 pywebview
 mutagen
 sqlalchemy
+pyqt5
