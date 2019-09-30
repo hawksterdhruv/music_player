@@ -1,19 +1,22 @@
 import sys
-from collections import OrderedDict
+import threading
+
+import audiotools.player
+import audiotools
 
 from PyQt5 import QtWidgets
-# from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QTableView
+from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt, QModelIndex, QEventLoop, pyqtSlot, pyqtSignal, QThread, \
+    QObject
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from application_api import PlayerApi, LibraryApi
 import models
 from application_api import LibraryApi
 from library_ui import Ui_Dialog as Library_ui_dialog
 from player_ui import Ui_MainWindow as Player_ui_mainwindow
 from playlist_ui import Ui_Dialog as Playlist_ui_dialog
-from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt, QModelIndex
+import time
 
 
 # QModelIndex.siblingAtC()
@@ -57,6 +60,44 @@ class SongsAbstractModel(QAbstractTableModel):
         return True
 
 
+# class Timer(QObject):
+#     def __init__(self,timer_label,player,duration):
+#         super(Timer,self).__init__()
+#         self.timer_label = timer_label
+#         self.player = player
+#         self.duration = duration
+# 
+#         self.playing_signal.connect(self.update_timer)
+# 
+#     playing_signal = pyqtSignal(int,int)
+# 
+#     @pyqtSlot(int,int)
+#     def update_timer(self,int1,int2):
+#         # for i in range(10):
+#         #     time.sleep(1)
+#         while True:
+#             # while self.player.status() == audiotools.player.PLAYER_PLAYING:
+#             print(self.player.progress()[0])
+#             t = self.duration*self.player.progress()[0]/self.player.progress()[0]
+#             self.timer_label.setText(f'{t}:.2f')
+#             time.sleep(0.5)
+
+def update_timer_seek(timer_label,seek, player, duration):
+    # t = duration * player.progress()[0] / player.progress()[1]
+    # timer_label.setText('{}:{}'.format(int(t // 60), int(t % 60)))
+    # for i in range(10):
+    #     time.sleep(1)
+    # while True:
+    while player.state() == audiotools.player.PLAYER_PLAYING:
+        percentage = player.progress()[0] / player.progress()[1]
+        seek.setValue(int(percentage*100))
+        t = duration * percentage
+        # print(t)
+        timer_label.setText('{:02}:{:02}'.format(int(t // 60), int(t % 60)))
+        time.sleep(0.5)
+    print('exited')
+
+
 class PlayerMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
@@ -66,8 +107,17 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
         self.library_dialog.setFather(self)
         self.playlist_dialog = PlalistDialog()
         self.playlist_dialog.setFather(self)
+
+        audio_output = audiotools.player.open_output('ALSA')
+        replay_gain = audiotools.player.RG_NO_REPLAYGAIN
+        self.player = audiotools.player.Player(audio_output, replay_gain)
+
         self.ui.medialibrary_button.clicked.connect(self.toggle_library)
         self.ui.playlist_button.clicked.connect(self.toggle_playlist)
+        self.ui.play_button.clicked.connect(self.play_song)
+        self.ui.pause_button.clicked.connect(self.pause_song)
+        self.ui.stop_button.clicked.connect(self.stop_song)
+        self.ui.timer_label.setText('00:00')
 
     def toggle_playlist(self):
         if self.playlist_dialog.isHidden():
@@ -76,13 +126,46 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
             self.playlist_dialog.hide()
 
     def toggle_library(self):
-        # my_dialog = LibraryDialog()
-        # my_dialog.show()
         if self.library_dialog.isHidden():
             self.library_dialog.show()
         else:
             self.library_dialog.hide()
 
+    def play_song(self, song=None):
+        if song:
+            audio_file = audiotools.open(song['filepath'])
+            self.player.open(audio_file)
+
+        self.player.play()
+        time.sleep(0.1)
+        self.thread = threading.Thread(target=update_timer_seek,
+                                       args=(self.ui.timer_label,self.ui.seek ,self.player, song['duration']))
+        self.thread.start()
+        # thread.target
+        # thread = QThread(self)
+        # thread.start()
+        # consume = Timer(self.ui.timer_label, self.player,song['duration'])
+        # consume.moveToThread(thread)
+        # consume.playing_signal.emit(1, 1)
+        # while True:
+        # while self.player.status() == audiotools.player.PLAYER_PLAYING:
+        # print(self.player.progress()[0])
+        # t = song['duration']*self.player.progress()[0]/self.player.progress()[1]
+        # print(t)
+        # self.ui.timer_label.setText(f'{t}:.2f')
+        # time.sleep(0.5)
+
+        print(f'playing {song.get("filepath")}' if song else '')
+
+    def pause_song(self):
+        if self.player:
+            self.player.pause()
+
+    def stop_song(self):
+        if self.player:
+            self.player.stop()
+        # if self.thread:
+        #     self.thread.
 
 class LibraryDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -92,13 +175,9 @@ class LibraryDialog(QtWidgets.QDialog):
         self.songs = None
         self.albums = None
         self.artists = None
-        # self.ui.songs.verticalHeader().hide()
-        # self.ui.artists.verticalHeader().hide()
-        # self.ui.albums.verticalHeader().hide()
 
         self.ui.library_button.clicked.connect(self.add_new)
         self.ui.songs.doubleClicked.connect(self.enqueue_song)
-        # self.ui.widget.isWindowModified(self.alert)
 
         self.engine = create_engine('sqlite:///music.db')
         models.Base.metadata.create_all(self.engine)
@@ -122,26 +201,12 @@ class LibraryDialog(QtWidgets.QDialog):
         self.father.playlist_dialog.songs.songdata.insert(0, song)
         # print(self.father.playlist_dialog.songs.songdata)
         self.father.playlist_dialog.songs.insertRows(0, 1, parent=QModelIndex())
-        # self.father.playlist_dialog.songs = SongsAbstractModel([song])
-        # self.father.playlist_dialog.ui.songs.setModel(self.father.playlist_dialog.songs)
-        # for a in range(QModelIndex.model().columnCount()):
-        # print(mod.data(QModelIndex))
-        # print(mod.itemData(QModelIndex))
-        pass
-        # print(a.internalId())
-
-    # print(self.songs)
-    # print(QModelIndex.siblingAtRow(QModelIndex.row()).data())
 
     def add_new(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory()
         LibraryApi.add_new(path=folder)
 
     def populate_songs(self):
-        # self.ui.songs.
-        # songs_cursor = self.session.query(models.Song).all()
-        # albums = self.session.query(models.Album).all()
-        # artists = self.session.query(models.Artist).all()
         songs_data = [{'title': a.title,
                        'album': a.album.name,
                        'duration': a.duration,
@@ -176,6 +241,16 @@ class PlalistDialog(QtWidgets.QDialog):
         self.hello()
         # self.ui.pushButton.clicked.connect(self.pu)
         self.father = None
+        self.ui.songs.doubleClicked.connect(self.play_song)
+
+    def play_song(self, index):
+        mod = index.model()
+        song = dict(
+            [(mod.headerData(a, Qt.Horizontal, Qt.DisplayRole), mod.itemData(index.siblingAtColumn(a))[0]) for a in
+             range(mod.columnCount())])
+        self.father.play_song(song)
+        # self.father.playlist_dialog.songs.songdata.insert(0, song)
+        # self.father.playlist_dialog.songs.insertRows(0, 1, parent=QModelIndex())
 
     def hello(self):
         self.songs = SongsAbstractModel([{'title': 'Justaju Jiski Thi',
@@ -187,28 +262,12 @@ class PlalistDialog(QtWidgets.QDialog):
                                           'filepath': '/home/dhruv/Music/music part 2/Umrao Jaan (1981)/04 Justaju Jiski Thi - www.downloadming.com.mp3',
                                           'id': 1}])
         self.ui.songs.setModel(self.songs)
-        self.ui.songs.hideColumn(1) # [1, 3, 4, 5, 6, 7]
-        self.ui.songs.hideColumn(3) # [1, 3, 4, 5, 6, 7]
-        self.ui.songs.hideColumn(4) # [1, 3, 4, 5, 6, 7]
-        self.ui.songs.hideColumn(5) # [1, 3, 4, 5, 6, 7]
-        self.ui.songs.hideColumn(6) # [1, 3, 4, 5, 6, 7]
-        self.ui.songs.hideColumn(7) # [1, 3, 4, 5, 6, 7]
-
-        # print('heljlo')
-
-    # def pu(self):
-    #     k = {'title': 'Justaju Jiski Thi',
-    #          'album': 'Umrao Jaan',
-    #          'duration': 277.70775510204084,
-    #          'artists': 'Umrao Jaan (1981)',
-    #          'playcount': 0,
-    #          'genre': 'Umrao Jaan',
-    #          'filepath': '/home/dhruv/Music/music part 2/Umrao Jaan (1981)/04 Justaju Jiski Thi - www.downloadming.com.mp3',
-    #          'id': 1}
-    #     self.songs.songdata.insert(0, k)
-    #     self.songs.insertRows(0, 0, parent=QModelIndex())
-
-
+        self.ui.songs.hideColumn(1)  # [1, 3, 4, 5, 6, 7]
+        self.ui.songs.hideColumn(3)  # [1, 3, 4, 5, 6, 7]
+        self.ui.songs.hideColumn(4)  # [1, 3, 4, 5, 6, 7]
+        self.ui.songs.hideColumn(5)  # [1, 3, 4, 5, 6, 7]
+        self.ui.songs.hideColumn(6)  # [1, 3, 4, 5, 6, 7]
+        self.ui.songs.hideColumn(7)  # [1, 3, 4, 5, 6, 7]
 
     def setFather(self, father):
         self.father = father
