@@ -1,0 +1,17 @@
+* {
+	font-size: 11px;
+	background-color: #3d3258; 
+	color:white;
+}
+
+QPushButton {
+	background-color: #acb2c3;
+	color:black;
+}
+
+
+
+QLineEdit, QTreeView, QTableView {
+	background-color: black;
+	color:#00ff00;
+}

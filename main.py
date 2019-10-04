@@ -6,7 +6,7 @@ import audiotools
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt, QModelIndex, QEventLoop, pyqtSlot, pyqtSignal, QThread, \
-    QObject
+    QObject, QSortFilterProxyModel, QRegExp
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -19,8 +19,6 @@ from playlist_ui import Ui_Dialog as Playlist_ui_dialog
 import time
 
 
-# QModelIndex.siblingAtC()
-# QAbstractTableModel
 class SongsAbstractModel(QAbstractTableModel):
     def __init__(self, datain, parent=None, *args):
         QAbstractTableModel.__init__(self, parent=None, *args)
@@ -60,6 +58,39 @@ class SongsAbstractModel(QAbstractTableModel):
         return True
 
 
+class SortFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        self.filters = {}
+        self.searchText = None
+        self.col_indexes = None
+
+    def setSearchText(self, arg=None):
+        self.searchText = arg
+        self.beginResetModel()
+        self.endResetModel()
+
+    def setColIndexes(self, col_indexes):
+        self.col_indexes = col_indexes
+
+    # def setFilterByColumn(self, regex, column):
+    #     self.filters[column] = regex
+    #     self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+
+        indices = [self.sourceModel().index(source_row, index, source_parent) for index in self.col_indexes]
+
+        if self.searchText:
+            for index in indices:
+                if index.data() and self.searchText.lower() in index.data().lower():
+                    return True
+            else:
+                return False
+        else:
+            return True
+
+
 # class Timer(QObject):
 #     def __init__(self,timer_label,player,duration):
 #         super(Timer,self).__init__()
@@ -82,7 +113,7 @@ class SongsAbstractModel(QAbstractTableModel):
 #             self.timer_label.setText(f'{t}:.2f')
 #             time.sleep(0.5)
 
-def update_timer_seek(timer_label,seek, player, duration):
+def update_timer_seek(timer_label, seek, player, duration):
     # t = duration * player.progress()[0] / player.progress()[1]
     # timer_label.setText('{}:{}'.format(int(t // 60), int(t % 60)))
     # for i in range(10):
@@ -90,7 +121,7 @@ def update_timer_seek(timer_label,seek, player, duration):
     # while True:
     while player.state() == audiotools.player.PLAYER_PLAYING:
         percentage = player.progress()[0] / player.progress()[1]
-        seek.setValue(int(percentage*100))
+        seek.setValue(int(percentage * 100))
         t = duration * percentage
         # print(t)
         timer_label.setText('{:02}:{:02}'.format(int(t // 60), int(t % 60)))
@@ -103,9 +134,17 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMainWindow.__init__(self)
         self.ui = Player_ui_mainwindow()
         self.ui.setupUi(self)
+
         self.library_dialog = LibraryDialog()
-        self.library_dialog.setFather(self)
         self.playlist_dialog = PlalistDialog()
+
+        with open('darktheme.css') as file_in:
+            css = file_in.read()
+            self.setStyleSheet(css)
+            self.playlist_dialog.setStyleSheet(css)
+            self.library_dialog.setStyleSheet(css)
+
+        self.library_dialog.setFather(self)
         self.playlist_dialog.setFather(self)
 
         audio_output = audiotools.player.open_output('ALSA')
@@ -117,6 +156,11 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
         self.ui.play_button.clicked.connect(self.play_song)
         self.ui.pause_button.clicked.connect(self.pause_song)
         self.ui.stop_button.clicked.connect(self.stop_song)
+        self.ui.volume.sliderReleased.connect(self.change_volume)
+        # self.ui.volume.sliderPressed.connect(self.change_volume)
+        # self.ui.volume.sliderMoved.connect(self.change_volume)
+        # self.ui.volume.mouseReleaseEvent.connect(self.change_volume)
+        self.ui.volume.valueChanged.connect(self.change_volume)
         self.ui.timer_label.setText('00:00')
 
     def toggle_playlist(self):
@@ -139,21 +183,8 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
         self.player.play()
         time.sleep(0.1)
         self.thread = threading.Thread(target=update_timer_seek,
-                                       args=(self.ui.timer_label,self.ui.seek ,self.player, song['duration']))
+                                       args=(self.ui.timer_label, self.ui.seek, self.player, song['duration']))
         self.thread.start()
-        # thread.target
-        # thread = QThread(self)
-        # thread.start()
-        # consume = Timer(self.ui.timer_label, self.player,song['duration'])
-        # consume.moveToThread(thread)
-        # consume.playing_signal.emit(1, 1)
-        # while True:
-        # while self.player.status() == audiotools.player.PLAYER_PLAYING:
-        # print(self.player.progress()[0])
-        # t = song['duration']*self.player.progress()[0]/self.player.progress()[1]
-        # print(t)
-        # self.ui.timer_label.setText(f'{t}:.2f')
-        # time.sleep(0.5)
 
         print(f'playing {song.get("filepath")}' if song else '')
 
@@ -164,8 +195,12 @@ class PlayerMainWindow(QtWidgets.QMainWindow):
     def stop_song(self):
         if self.player:
             self.player.stop()
-        # if self.thread:
-        #     self.thread.
+
+    def change_volume(self):
+        if not self.ui.volume.isSliderDown():
+            # print(self.ui.volume.value())
+            self.player.set_volume(self.ui.volume.value() / 100)
+
 
 class LibraryDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -183,7 +218,56 @@ class LibraryDialog(QtWidgets.QDialog):
         models.Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
-        self.populate_songs()
+        # self.populate_songs()
+        songs_data = [{'title': a.title,
+                       'album': a.album.name,
+                       'duration': a.duration,
+                       'artists': ','.join([b.name for b in a.artists]),
+                       'playcount': a.playcount,
+                       'genre': a.genre.name,
+                       'filepath': a.filepath,
+                       'id': a.id} for a in self.session.query(models.Song).all()]
+        albums_data = [{'name': a.name,
+                        'track_count': len(a.songs),
+                        'year': ''} for a in self.session.query(models.Album).all()]
+        artists_data = [{'name': a.name,
+                         'track_count': len(a.songs),
+                         'album_count': len([])} for a in self.session.query(models.Artist).all()]
+
+        ################## SETUP ALBUMS TABLE ##################
+        self.albums = SongsAbstractModel(albums_data)
+        self.proxy_albums = SortFilterProxyModel(self)
+        self.proxy_albums.setSourceModel(self.albums)
+        self.proxy_albums.setColIndexes([0])
+
+        self.ui.albums.setModel(self.proxy_albums)
+
+        self.ui.search_input.textChanged.connect(self.proxy_albums.setSearchText)
+        ################## END ##################
+
+        ################## SETUP ARTISTS TABLE ##################
+        self.artists = SongsAbstractModel(artists_data)
+        self.proxy_artists = SortFilterProxyModel(self)
+        self.proxy_artists.setSourceModel(self.artists)
+        self.proxy_artists.setColIndexes([0])
+
+        self.ui.artists.setModel(self.proxy_artists)
+
+        self.ui.search_input.textChanged.connect(self.proxy_artists.setSearchText)
+        ################## END ##################
+
+        ################## SETUP SONGS TABLE ##################
+        self.songs = SongsAbstractModel(songs_data)
+        self.proxy_songs = SortFilterProxyModel(self)
+        self.proxy_songs.setSourceModel(self.songs)
+        self.proxy_songs.setColIndexes([0, 1, 3, 5])
+        self.ui.search_input.textChanged.connect(self.proxy_songs.setSearchText)
+        self.ui.songs.setModel(self.proxy_songs)
+        self.ui.songs.hideColumn(6)  # hide filepath
+        self.ui.songs.hideColumn(7)  # hide id
+
+        ################## END ##################
+
         self.father = None
 
     def setFather(self, father):
@@ -206,30 +290,7 @@ class LibraryDialog(QtWidgets.QDialog):
         folder = QtWidgets.QFileDialog.getExistingDirectory()
         LibraryApi.add_new(path=folder)
 
-    def populate_songs(self):
-        songs_data = [{'title': a.title,
-                       'album': a.album.name,
-                       'duration': a.duration,
-                       'artists': ','.join([b.name for b in a.artists]),
-                       'playcount': a.playcount,
-                       'genre': a.genre.name,
-                       'filepath': a.filepath,
-                       'id': a.id} for a in self.session.query(models.Song).all()]
-        albums_data = [{'name': a.name,
-                        'track_count': len(a.songs),
-                        'year': ''} for a in self.session.query(models.Album).all()]
-        artists_data = [{'name': a.name,
-                         'track_count': len(a.songs),
-                         'album_count': len([])} for a in self.session.query(models.Artist).all()]
-
-        self.songs = SongsAbstractModel(songs_data)
-        self.artists = SongsAbstractModel(artists_data)
-        self.albums = SongsAbstractModel(albums_data)
-        self.ui.songs.setModel(self.songs)
-        self.ui.songs.hideColumn(6)  # hide filepath
-        self.ui.songs.hideColumn(7)  # hide id
-        self.ui.artists.setModel(self.artists)
-        self.ui.albums.setModel(self.albums)
+    # def populate_songs(self):
 
 
 class PlalistDialog(QtWidgets.QDialog):
@@ -274,13 +335,8 @@ class PlalistDialog(QtWidgets.QDialog):
 
 
 if __name__ == '__main__':
-    # Base = declarative_base()
-
     app = QtWidgets.QApplication(sys.argv)
-    # Dialog = QtWidgets.QDialog()
-    # my_dialog = LibraryDialog()
 
-    # my_dialog.show()
     my_mainwindow = PlayerMainWindow()
     my_mainwindow.show()
 
