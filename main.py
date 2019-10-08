@@ -61,7 +61,7 @@ class SongsAbstractModel(QAbstractTableModel):
 class SortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         QSortFilterProxyModel.__init__(self, *args, **kwargs)
-        self.filters = {}
+        self.filters = []
         self.searchText = None
         self.col_indexes = None
 
@@ -70,21 +70,27 @@ class SortFilterProxyModel(QSortFilterProxyModel):
         self.beginResetModel()
         self.endResetModel()
 
+    def setFilterText(self, arg=None):
+        self.filters.append(arg)
+        self.beginResetModel()
+        self.endResetModel()
+
     def setColIndexes(self, col_indexes):
         self.col_indexes = col_indexes
 
-    # def setFilterByColumn(self, regex, column):
-    #     self.filters[column] = regex
-    #     self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row, source_parent):
-
+        # print(self.sourceModel(),source_parent)
         indices = [self.sourceModel().index(source_row, index, source_parent) for index in self.col_indexes]
+
+
+        
 
         if self.searchText:
             for index in indices:
                 if index.data() and self.searchText.lower() in index.data().lower():
-                    return True
+
+                   return True
             else:
                 return False
         else:
@@ -243,6 +249,7 @@ class LibraryDialog(QtWidgets.QDialog):
         self.ui.albums.setModel(self.proxy_albums)
 
         self.ui.search_input.textChanged.connect(self.proxy_albums.setSearchText)
+        self.ui.albums.clicked.connect(self.filter_by_albums)
         ################## END ##################
 
         ################## SETUP ARTISTS TABLE ##################
@@ -269,6 +276,12 @@ class LibraryDialog(QtWidgets.QDialog):
         ################## END ##################
 
         self.father = None
+
+    def filter_by_albums(self, modelIndex):
+        index = self.albums.index(modelIndex.row(), 0, modelIndex)
+        print(index.data())
+        # self.sourceModel().index(source_row, index, source_parent)
+        self.proxy_songs.setSearchText(index.data())
 
     def setFather(self, father):
         self.father = father

@@ -1,6 +1,7 @@
 # folders
 .idea
 __pycache__
+backup/*
 
 #filetype
 *.pyc
